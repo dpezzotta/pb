@@ -15,6 +15,7 @@ FridayTrivia::ensure_tables($db);
 $locations = FridayTrivia::allowed_locations($admin_id);
 $location_ids = array_keys($locations);
 $weeks = FridayTrivia::week_options($db, $location_ids);
+$default_week = FridayTrivia::default_week($weeks);
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $action = isset($_POST['action']) ? $_POST['action'] : 'upload_game';
@@ -168,7 +169,7 @@ body { text-align:left; background:#edf4fa; }
                     <label for="week_start">Camp Week</label>
                     <select name="week_start" id="week_start" required>
                         <?php foreach ($weeks as $week) { ?>
-                            <option value="<?php echo ft_h($week); ?>"><?php echo ft_h(date('M j, Y', strtotime($week))); ?></option>
+                            <option value="<?php echo ft_h($week); ?>"<?php if ($week == $default_week) echo ' selected'; ?>><?php echo ft_h(date('M j, Y', strtotime($week))); ?></option>
                         <?php } ?>
                     </select>
                 </div>
