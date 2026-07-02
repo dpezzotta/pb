@@ -101,6 +101,18 @@ class FridayTrivia
         return $super->get_admin_locations((int)$admin_id);
     }
 
+    static function admin_email($db, $admin_id)
+    {
+        $result = mysqli_query($db, "SELECT email FROM admin_info WHERE admin_id = " . (int)$admin_id . " LIMIT 1");
+        $row = $result ? mysqli_fetch_assoc($result) : null;
+        return $row && !empty($row['email']) ? strtolower(trim($row['email'])) : '';
+    }
+
+    static function can_delete_finished_games($db, $admin_id)
+    {
+        return self::admin_email($db, $admin_id) == 'danny@planetbravo.com';
+    }
+
     static function week_options($db, $location_ids)
     {
         $ids = array_map('intval', (array)$location_ids);
@@ -159,6 +171,11 @@ class FridayTrivia
         fclose($handle);
         if (!count($rows)) return array(false, 'No valid trivia rows were found. Use: Question, Correct Answer, Wrong Answer, Wrong Answer, Wrong Answer.');
 
+        $existing = self::game_for_location_week($db, $location_id, $week_start);
+        if ($existing && self::attempt_count($db, (int)$existing['game_id']) > 0 && !self::can_delete_finished_games($db, $admin_id)) {
+            return array(false, 'That location/week already has completed camper attempts. Only Danny can overwrite it.');
+        }
+
         mysqli_query($db, sprintf(
             "INSERT INTO friday_trivia_games (location_id, week_start, title, active, created_by)
              VALUES (%d, '%s', '%s', 1, %d)
@@ -170,7 +187,6 @@ class FridayTrivia
         ));
         $game_id = mysqli_insert_id($db);
         if (!$game_id) {
-            $existing = self::game_for_location_week($db, $location_id, $week_start);
             $game_id = $existing ? (int)$existing['game_id'] : 0;
         }
         if (!$game_id) return array(false, 'Could not save the trivia game.');
@@ -178,6 +194,7 @@ class FridayTrivia
         mysqli_query($db, "DELETE FROM friday_trivia_questions WHERE game_id = " . (int)$game_id);
         mysqli_query($db, "DELETE friday_trivia_answers FROM friday_trivia_answers INNER JOIN friday_trivia_attempts ON friday_trivia_answers.attempt_id = friday_trivia_attempts.attempt_id WHERE friday_trivia_attempts.game_id = " . (int)$game_id);
         mysqli_query($db, "DELETE FROM friday_trivia_attempts WHERE game_id = " . (int)$game_id);
+        mysqli_query($db, "DELETE FROM friday_trivia_progress WHERE game_id = " . (int)$game_id);
 
         $order = 1;
         foreach ($rows as $row) {
@@ -248,6 +265,32 @@ class FridayTrivia
         if (!$game) return array(false, 'That trivia game is not available for your account.');
         mysqli_query($db, "UPDATE friday_trivia_games SET active = " . ((int)$active ? 1 : 0) . " WHERE game_id = " . (int)$game_id);
         return array(true, ((int)$active ? 'Trivia game activated.' : 'Trivia game turned off.'));
+    }
+
+    static function delete_game($db, $game_id, $location_ids, $admin_id)
+    {
+        $game = self::game_by_id_for_locations($db, $game_id, $location_ids);
+        if (!$game) return array(false, 'That trivia game is not available for your account.');
+
+        $attempt_count = self::attempt_count($db, $game_id);
+        if ($attempt_count > 0 && !self::can_delete_finished_games($db, $admin_id)) {
+            return array(false, 'That trivia game already has completed camper attempts, so only Danny can delete it.');
+        }
+
+        mysqli_query($db, "DELETE friday_trivia_answers FROM friday_trivia_answers INNER JOIN friday_trivia_attempts ON friday_trivia_answers.attempt_id = friday_trivia_attempts.attempt_id WHERE friday_trivia_attempts.game_id = " . (int)$game_id);
+        mysqli_query($db, "DELETE FROM friday_trivia_attempts WHERE game_id = " . (int)$game_id);
+        mysqli_query($db, "DELETE FROM friday_trivia_progress WHERE game_id = " . (int)$game_id);
+        mysqli_query($db, "DELETE FROM friday_trivia_questions WHERE game_id = " . (int)$game_id);
+        mysqli_query($db, "DELETE FROM friday_trivia_games WHERE game_id = " . (int)$game_id);
+
+        return array(true, 'Trivia game deleted. Existing BravoPoints totals were not changed.');
+    }
+
+    static function attempt_count($db, $game_id)
+    {
+        $result = mysqli_query($db, "SELECT COUNT(*) AS total FROM friday_trivia_attempts WHERE game_id = " . (int)$game_id);
+        $row = $result ? mysqli_fetch_assoc($result) : null;
+        return $row ? (int)$row['total'] : 0;
     }
 
     static function begin_game($db, $game_id, $location_ids, $admin_id)

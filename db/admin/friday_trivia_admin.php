@@ -16,6 +16,7 @@ $locations = FridayTrivia::allowed_locations($admin_id);
 $location_ids = array_keys($locations);
 $weeks = FridayTrivia::week_options($db, $location_ids);
 $default_week = FridayTrivia::default_week($weeks);
+$can_delete_finished_trivia = FridayTrivia::can_delete_finished_games($db, $admin_id);
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $action = isset($_POST['action']) ? $_POST['action'] : 'upload_game';
@@ -25,6 +26,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             isset($_POST['game_id']) ? intval($_POST['game_id']) : 0,
             $location_ids,
             isset($_POST['active']) ? intval($_POST['active']) : 0
+        );
+        if ($ok) $_SESSION['friday_trivia_message'] = $message;
+        else $_SESSION['friday_trivia_error'] = $message;
+    } elseif ($action == 'delete_game') {
+        list($ok, $message) = FridayTrivia::delete_game(
+            $db,
+            isset($_POST['game_id']) ? intval($_POST['game_id']) : 0,
+            $location_ids,
+            $admin_id
         );
         if ($ok) $_SESSION['friday_trivia_message'] = $message;
         else $_SESSION['friday_trivia_error'] = $message;
@@ -120,6 +130,7 @@ body { text-align:left; background:#edf4fa; }
 .ft-controls .ft-button { min-width:78px; }
 .ft-controls .ft-button.begin { min-width:76px; }
 .ft-controls .ft-button.progress { min-width:116px; }
+.ft-controls .ft-button.delete { min-width:72px; }
 .ft-status { display:inline-block; padding:5px 8px; border-radius:999px; font-weight:900; font-size:12px; }
 .ft-status.active { background:#dcfce7; color:#166534; }
 .ft-status.off { background:#f1f5f9; color:#475569; }
@@ -227,6 +238,13 @@ body { text-align:left; background:#edf4fa; }
                             <button class="ft-button small begin <?php echo !empty($game['started_at']) ? 'gray' : 'orange'; ?>" type="submit"><?php echo !empty($game['started_at']) ? 'Standby' : 'Begin'; ?></button>
                         </form>
                         <a class="ft-button small blue progress" href="friday_trivia_admin.php?progress_game_id=<?php echo intval($game['game_id']); ?>#camper-progress">Camper Progress</a>
+                        <?php if ((int)$game['attempt_count'] == 0 || $can_delete_finished_trivia) { ?>
+                        <form class="ft-inline-form" method="post" action="friday_trivia_admin.php" onsubmit="return confirm('<?php echo (int)$game['attempt_count'] > 0 ? 'This trivia has completed camper attempts. Delete it anyway? Existing BravoPoints totals will not be changed.' : 'Delete this trivia game? This removes its questions and any in-progress camper sessions.'; ?>');">
+                            <input type="hidden" name="action" value="delete_game">
+                            <input type="hidden" name="game_id" value="<?php echo intval($game['game_id']); ?>">
+                            <button class="ft-button small red delete" type="submit">Delete</button>
+                        </form>
+                        <?php } ?>
                         </div>
                     </td>
                 </tr>
