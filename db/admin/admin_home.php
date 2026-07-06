@@ -963,6 +963,7 @@ if (
 	  <a target="_blank" href="admin_test_card_watch.php">Test Card Watch</a>
 	  <a target="_blank" href="admin_student_change_watch.php">Student Change Watch</a>
 	  <a target="_blank" href="duplicate_student_merges.php">Duplicate Student Merges</a>
+	  <a target="_blank" href="admin_compare_week_attendees.php">Repeat Attendees by Week</a>
 	  <a target="_blank" href="report_registrations.php">Registration Report</a>
 	  <a target="_blank" href="scholarship_review.php">Scholarship Review</a>
 
@@ -1038,6 +1039,7 @@ if (
   <a target="_blank" href="care_profile_updates.php">Care.com Profile Updates</a>
   <a target="_blank" href="wednesday_mailers.php">Wednesday Mailers</a>
   <a target="_blank" href="final_details_mailers.php">Final Details Mailers</a>
+  <a target="_blank" href="showcase_mailers.php">Showcase Reminder Mailers</a>
   <a target="_blank" href="rotating_sites_schedule.php">Brain Games & Surprise Schedule</a>
   <a target="_blank" href="friday_trivia_admin.php">PB Trivia</a>
       <a target="_blank" href="tlp_permissions.php">PB Jamboree Tech Permissions</a>
